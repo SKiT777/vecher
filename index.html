@@ -68,51 +68,51 @@
    "round": 1,
    "stage": "A",
    "mechanic": "scale",
-   "target": "one",
+   "target": "all",
    "intensity": 1,
    "tags": [
     "быт",
     "юмор"
    ],
-   "text": "{name}, по шкале от 1 до 10: насколько ты жаворонок? 1 — сова до мозга костей, 10 — бодр(а) в 6 утра."
+   "text": "По шкале от 1 до 10: насколько ты жаворонок? 1 — сова до мозга костей, 10 — бодр(а) в 6 утра."
   },
   {
    "id": "p01b",
    "round": 1,
    "stage": "B",
    "mechanic": "talk",
-   "target": "one",
+   "target": "all",
    "intensity": 1,
    "tags": [
     "личное"
    ],
-   "text": "{name}, какой день за последний год ты бы с удовольствием прожил(а) ещё раз?"
+   "text": "Каждый по очереди: какой день за последний год ты бы с удовольствием прожил(а) ещё раз?"
   },
   {
    "id": "p02a",
    "round": 2,
    "stage": "A",
    "mechanic": "guess_partner",
-   "target": "one",
+   "target": "all",
    "intensity": 1,
    "tags": [
     "личное",
     "юмор"
    ],
-   "text": "Какой свой талант {name} считает самым бесполезным?"
+   "text": "Какой свой талант ты считаешь самым бесполезным?"
   },
   {
    "id": "p02b",
    "round": 2,
    "stage": "B",
    "mechanic": "talk",
-   "target": "one",
+   "target": "all",
    "intensity": 2,
    "tags": [
     "личное",
     "прошлое"
    ],
-   "text": "{name}, о чём ты мечтал(а) в 15 лет и что от этой мечты осталось сейчас?"
+   "text": "Каждый по очереди: о чём ты мечтал(а) в 15 лет и что от этой мечты осталось сейчас?"
   },
   {
    "id": "p03a",
@@ -145,13 +145,13 @@
    "round": 4,
    "stage": "A",
    "mechanic": "guess_partner",
-   "target": "one",
+   "target": "all",
    "intensity": 1,
    "tags": [
     "мечты",
     "деньги"
    ],
-   "text": "На что {name} без раздумий потратил(а) бы 100 000 рублей прямо завтра?"
+   "text": "На что ты без раздумий потратил(а) бы 100 000 рублей прямо завтра?"
   },
   {
    "id": "p04b",
@@ -171,12 +171,12 @@
    "round": 5,
    "stage": "A",
    "mechanic": "scale",
-   "target": "one",
+   "target": "all",
    "intensity": 1,
    "tags": [
     "личное"
    ],
-   "text": "{name}, по шкале от 1 до 10: насколько ты любишь сюрпризы?"
+   "text": "По шкале от 1 до 10: насколько ты любишь сюрпризы?"
   },
   {
    "id": "p05b",
@@ -405,64 +405,67 @@ const mechanics = {
     };
   },
 
+  // все четверо втайне ставят число, потом каждый угадывает число партнёра, и открываем всё
   scale(c, t, el) {
-    el.innerHTML = `<button class="big" id="s">${esc(S.players[t])} выбирает число втайне</button>`;
+    el.innerHTML = `<div class="muted">Каждый втайне ставит своё число, потом угадываем числа партнёров.</div>
+      <button class="big" id="s">Начать</button>`;
     el.querySelector("#s").onclick = () => {
       const card = S.queue[S.idx];
-      handOver(S.players[t], "Остальные не смотрят.", () => {
-        render(`
-          <h2>${esc(S.players[t])}, твоё число</h2>
+      collectSecrets(card, i => `
+          <h2>${esc(S.players[i])}, твоё число</h2>
+          <div class="muted">${esc(card.text)}</div>
           <div class="reveal" id="v">5</div>
-          <input type="range" min="1" max="10" value="5" id="r">
-          <button class="primary big" id="ok">Спрятать</button>`);
-        const r = document.getElementById("r");
-        r.oninput = () => document.getElementById("v").textContent = r.value;
-        document.getElementById("ok").onclick = () => {
-          const value = +r.value;
+          <input type="range" min="1" max="10" value="5" id="r"
+            oninput="document.getElementById('v').textContent=this.value">`,
+        () => +document.getElementById("r").value,
+        values => {
           render(`
-            <div class="card"><div class="qtext">${esc(cardText(card, t))}</div>
-            <div class="muted">Все остальные по очереди называют догадку вслух.</div>
-            <button class="primary big" id="rv">Показать ответ</button></div>`);
+            <div class="card"><div class="qtext">${esc(card.text)}</div>
+            <div class="muted">Каждый по очереди называет вслух, какое число поставил(а) его партнёр.</div>
+            <button class="primary big" id="rv">Показать все числа</button></div>`);
           document.getElementById("rv").onclick = () => {
-            log("scale_result", { cardId: card.id, player: S.players[t], value });
-            revealAndContinue(card, `<div class="reveal">${value}</div>`);
+            values.forEach((value, i) => log("scale_result", { cardId: card.id, player: S.players[i], value }));
+            revealAndContinue(card, `<div class="names">${values.map((v, i) =>
+              `<div class="pair center"><div class="muted">${esc(S.players[i])}</div><div class="reveal">${v}</div></div>`).join("")}</div>`);
           };
-        };
-      });
+        });
     };
   },
 
+  // все четверо пишут ответ про себя, потом по очереди партнёр угадывает
   guess_partner(c, t, el) {
-    const p = partnerOf(t);
-    el.innerHTML = `<div class="muted">${esc(S.players[t])} пишет ответ втайне, потом ${esc(S.players[p])} угадывает вслух.</div>
-      <button class="big" id="s">Телефон → ${esc(S.players[t])}</button>`;
+    el.innerHTML = `<div class="muted">Каждый втайне пишет свой ответ, потом партнёр угадывает его вслух.</div>
+      <button class="big" id="s">Начать</button>`;
     el.querySelector("#s").onclick = () => {
       const card = S.queue[S.idx];
-      handOver(S.players[t], "Напиши свой настоящий ответ.", () => {
-        render(`
-          <h2>${esc(S.players[t])}, твой ответ</h2>
-          <div class="muted">${esc(cardText(card, t))}</div>
-          <textarea id="a" placeholder="Коротко"></textarea>
-          <button class="primary big" id="ok">Спрятать</button>`);
-        document.getElementById("ok").onclick = () => {
-          const answer = document.getElementById("a").value.trim();
-          render(`
-            <div class="card"><div class="qtext">${esc(cardText(card, t))}</div>
-            <div class="muted">${esc(S.players[p])}, угадывай вслух!</div>
-            <button class="primary big" id="rv">Показать ответ</button></div>`);
-          document.getElementById("rv").onclick = () => {
-            revealAndContinue(card, `<div class="qtext center">«${esc(answer || "…")}»</div>
-              <div class="row"><button id="hit">Угадал(а)</button><button id="miss">Мимо</button></div>`, root => {
+      collectSecrets(card, i => `
+          <h2>${esc(S.players[i])}, твой ответ</h2>
+          <div class="muted">${esc(card.text)}</div>
+          <textarea id="a" placeholder="Коротко"></textarea>`,
+        () => document.getElementById("a").value.trim(),
+        answers => {
+          const show = i => {
+            if (i >= 4) return revealAndContinue(card, answers.map((a, k) =>
+              `<div class="muted">${esc(S.players[k])}: «${esc(a || "…")}»</div>`).join(""));
+            const p = partnerOf(i);
+            render(`
+              <div class="card"><div class="qtext">${esc(card.text)}</div>
+              <div class="muted">${esc(S.players[p])}, что ответил(а) ${esc(S.players[i])}? Угадывай вслух!</div>
+              <div id="res"><button class="primary big" id="rv">Показать ответ</button></div></div>`);
+            document.getElementById("rv").onclick = () => {
+              const res = document.getElementById("res");
+              res.innerHTML = `<div class="qtext center">«${esc(answers[i] || "…")}»</div>
+                <div class="row"><button id="hit">Угадал(а)</button><button id="miss">Мимо</button></div>`;
               const mark = hit => () => {
-                log("guess_result", { cardId: card.id, player: S.players[t], guesser: S.players[p], answer, hit });
-                root.querySelector("#hit").disabled = root.querySelector("#miss").disabled = true;
+                log("guess_result", { cardId: card.id, player: S.players[i], guesser: S.players[p], answer: answers[i], hit });
+                show(i + 1);
               };
-              root.querySelector("#hit").onclick = mark(true);
-              root.querySelector("#miss").onclick = mark(false);
-            });
+              res.querySelector("#hit").onclick = mark(true);
+              res.querySelector("#miss").onclick = mark(false);
+            };
           };
-        };
-      });
+          show(0);
+        });
     };
   },
 
@@ -492,6 +495,19 @@ const mechanics = {
     };
   },
 };
+
+// телефон по кругу: каждый втайне что-то вводит, потом done(массив ответов по игрокам)
+function collectSecrets(card, formHtml, read, done) {
+  const out = [];
+  const ask = i => {
+    if (i >= 4) return done(out);
+    handOver(S.players[i], "Остальные не смотрят.", () => {
+      render(formHtml(i) + `<button class="primary big" id="ok">Спрятать</button>`);
+      document.getElementById("ok").onclick = () => { out[i] = read(); hideThen(() => ask(i + 1)); };
+    });
+  };
+  ask(0);
+}
 
 // после скрытого ввода возвращаемся к карточке, но уже с ответом
 function revealAndContinue(card, html, bind) {
