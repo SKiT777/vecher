@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14111a">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<title>Вечер вопросов</title>
+<style>
+  :root {
+    --bg: #14111a; --card: #1f1a28; --text: #f2eef7; --muted: #9a90a8;
+    --a: #5b8cff; --b: #ff4f7b; --ok: #3ecf8e; --line: #2e2739;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 18px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #app { max-width: 520px; margin: 0 auto; min-height: 100dvh; padding: 16px;
+    display: flex; flex-direction: column; gap: 14px; }
+  h1 { font-size: 26px; margin: 8px 0 0; }
+  h2 { font-size: 20px; margin: 0; }
+  .muted { color: var(--muted); font-size: 15px; }
+  input, textarea { width: 100%; padding: 12px 14px; font: inherit; color: var(--text);
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  textarea { min-height: 90px; resize: vertical; }
+  button { font: inherit; border: 0; border-radius: 14px; padding: 14px 16px; cursor: pointer;
+    background: var(--card); color: var(--text); border: 1px solid var(--line); }
+  button.primary { background: var(--text); color: var(--bg); font-weight: 600; border: 0; }
+  button.big { width: 100%; padding: 18px; font-size: 19px; }
+  button:disabled { opacity: .35; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .pair { border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: grid; gap: 8px; }
+  .card { background: var(--card); border-radius: 22px; padding: 22px 20px; display: grid; gap: 14px;
+    border-top: 5px solid var(--a); }
+  .card.B { border-top-color: var(--b); }
+  .tag { display: inline-block; font-size: 13px; padding: 3px 10px; border-radius: 99px;
+    background: #ffffff14; color: var(--muted); margin-right: 6px; }
+  .qtext { font-size: 23px; line-height: 1.35; font-weight: 500; }
+  .timer { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .timer > div { height: 100%; width: 0; background: var(--ok); transition: width 1s linear, background .3s; }
+  .timer.over > div { background: var(--b); }
+  .fb { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .fb button { padding: 10px 4px; font-size: 15px; }
+  .fb button.on { background: var(--text); color: var(--bg); }
+  .reveal { font-size: 44px; font-weight: 700; text-align: center; padding: 8px 0; }
+  .center { text-align: center; }
+  .spacer { flex: 1; }
+  .names { display: flex; flex-wrap: wrap; gap: 8px; }
+  .names button { flex: 1 1 40%; }
+  .names button.on { background: var(--b); border-color: var(--b); }
+  input[type=range] { padding: 0; accent-color: var(--b); height: 36px; background: none; border: 0; }
+  .hidden-screen { background: #000; border-radius: 22px; padding: 40px 20px; text-align: center; display: grid; gap: 18px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<input type="file" id="deckFile" accept=".json,application/json" hidden>
+
+<!-- Колода по умолчанию. Готовится на ПК в decks/*.json, сюда подставляется при сборке или грузится кнопкой. -->
+<script type="application/json" id="defaultDeck">
+{
+  "id": "pilot",
+  "title": "Пилот: 5 раундов",
+  "cards": [
+    {"id":"p01a","round":1,"stage":"A","mechanic":"scale","target":"one","intensity":1,"tags":["знакомство","мы"],
+     "text":"{name}, по шкале от 1 до 10: насколько ты был(а) уверен(а), что мы подружимся, когда мы вчетвером впервые увиделись?"},
+    {"id":"p01b","round":1,"stage":"B","mechanic":"talk","target":"all","intensity":2,"tags":["знакомство","мы"],
+     "text":"Каждый по очереди: какое первое впечатление произвёл на тебя каждый из сидящих и насколько оно оказалось правдой? Одна фраза на человека."},
+    {"id":"p02a","round":2,"stage":"A","mechanic":"guess_partner","target":"one","intensity":1,"tags":["личное","юмор"],
+     "text":"Какой свой талант {name} считает самым бесполезным?"},
+    {"id":"p02b","round":2,"stage":"B","mechanic":"talk","target":"one","intensity":2,"tags":["личное","прошлое"],
+     "text":"{name}, о чём ты мечтал(а) в 15 лет и что от этой мечты осталось сейчас?"},
+    {"id":"p03a","round":3,"stage":"A","mechanic":"point","target":"all","intensity":1,"tags":["юмор","мы"],
+     "text":"Кто из нас четверых скорее всех бросит всё и уедет жить на край света?"},
+    {"id":"p03b","round":3,"stage":"B","mechanic":"anon_count","target":"all","intensity":3,"tags":["отношения","ревность"],
+     "text":"Я хотя бы раз читал(а) переписку партнёра без спроса."},
+    {"id":"p04a","round":4,"stage":"A","mechanic":"guess_partner","target":"one","intensity":3,"tags":["секс","пара"],
+     "text":"Какое время и место {name} назовёт идеальными для секса?"},
+    {"id":"p04b","round":4,"stage":"B","mechanic":"anon_count","target":"all","intensity":4,"tags":["секс","фантазии"],
+     "text":"У меня есть фантазия, которую я ещё ни разу не озвучивал(а) партнёру."},
+    {"id":"p05a","round":5,"stage":"A","mechanic":"scale","target":"one","intensity":3,"tags":["секс","пара"],
+     "text":"{name}, по шкале от 1 до 10: насколько для тебя важна прелюдия по сравнению с самим сексом?"},
+    {"id":"p05b","round":5,"stage":"B","mechanic":"talk","target":"couple","intensity":3,"tags":["секс","пара","мы"],
+     "text":"Каждая пара по очереди: что в вашей близости стало лучше за последний год? Каждый отвечает про свою пару."}
+  ]
+}
+</script>
+
+<script src="admin-key.js"></script>
+<script>
+const CARD_SECONDS = 75;       // мягкий лимит на карточку: 10 карточек ≈ 10–12 минут
+const PASSES_PER_PLAYER = 2;
+const MECH = {
+  talk: "Обсуждаем",
+  scale: "Шкала 1–10",
+  guess_partner: "Угадай партнёра",
+  point: "Показываем пальцем",
+  anon_count: "Анонимно",
+};
+
+const $app = document.getElementById("app");
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+let deck = JSON.parse(document.getElementById("defaultDeck").textContent);
+let S = null;        // текущая сессия
+let timerId = null;
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const partnerOf = i => i ^ 1;  // пары: 0–1 и 2–3
+
+function log(type, data = {}) {
+  S.events.push({ type, ...data });
+  store.set("currentSession", S);
+}
+
+function render(html) {
+  clearInterval(timerId);
+  $app.innerHTML = html;
+}
+
+/* ---------- Экран 1: игроки ---------- */
+function screenSetup() {
+  const saved = store.get("players", ["", "", "", ""]);
+  render(`
+    <h1>Вечер вопросов</h1>
+    <div class="muted">Колода: <b>${esc(deck.title)}</b>, карточек: ${deck.cards.length}</div>
+    <div class="pair"><div class="muted">Пара 1</div>
+      <input id="n0" placeholder="Имя" value="${esc(saved[0])}">
+      <input id="n1" placeholder="Имя партнёра" value="${esc(saved[1])}"></div>
+    <div class="pair"><div class="muted">Пара 2</div>
+      <input id="n2" placeholder="Имя" value="${esc(saved[2])}">
+      <input id="n3" placeholder="Имя партнёра" value="${esc(saved[3])}"></div>
+    <button id="load">Загрузить другую колоду…</button>
+    <div class="spacer"></div>
+    <button class="primary big" id="go">Начать</button>
+  `);
+  document.getElementById("load").onclick = () => document.getElementById("deckFile").click();
+  document.getElementById("go").onclick = () => {
+    const names = [0, 1, 2, 3].map(i => document.getElementById("n" + i).value.trim() || `Игрок ${i + 1}`);
+    store.set("players", names);
+    const now = new Date();
+    S = {
+      id: now.toISOString().slice(0, 16).replace("T", "_").replace(":", "-"),
+      startedAt: now.toISOString(), startMs: now.getTime(),
+      deckId: deck.id, players: names, pairs: [[0, 1], [2, 3]],
+      passes: names.map(() => PASSES_PER_PLAYER),
+      queue: deck.cards.slice(), idx: 0, events: [],
+    };
+    log("session_start", { deck: deck.id });
+    screenIntro();
+  };
+}
+
+document.getElementById("deckFile").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!Array.isArray(d.cards)) throw new Error("нет поля cards");
+    deck = d; screenSetup();
+  } catch (err) { alert("Не удалось прочитать колоду: " + err.message); }
+};
+
+function screenIntro() {
+  render(`
+    <h1>Готово</h1>
+    <div class="muted">Карточек в игре: ${S.queue.length}. У каждого по ${PASSES_PER_PLAYER} «паса» на вечер.</div>
+    <div class="muted">Под каждой карточкой три кнопки: <b>скучно</b>, <b>слишком</b>, <b>огонь</b>. По ним будем подбирать следующие колоды.</div>
+    <div class="spacer"></div>
+    <button class="primary big" id="go">Первая карточка</button>
+  `);
+  document.getElementById("go").onclick = screenCard;
+}
+
+/* ---------- Общие экраны «передай телефон» ---------- */
+function handOver(name, hint, next) {
+  render(`
+    <div class="spacer"></div>
+    <div class="hidden-screen">
+      <div class="muted">Передай телефон</div>
+      <div class="reveal">${esc(name)}</div>
+      <div class="muted">${hint}</div>
+      <button class="primary big" id="ok">Это я, показать</button>
+    </div>
+    <div class="spacer"></div>
+  `);
+  document.getElementById("ok").onclick = next;
+}
+function hideThen(next) {
+  render(`
+    <div class="spacer"></div>
+    <div class="hidden-screen"><div class="reveal">✓</div><div class="muted">Скрыто</div>
+      <button class="big" id="ok">Дальше</button></div>
+    <div class="spacer"></div>
+  `);
+  document.getElementById("ok").onclick = next;
+}
+
+/* ---------- Экран 3: карточка ---------- */
+function targetFor(card) {
+  // в одном раунде A и B направлены на одного человека; раунды идут по кругу
+  return ((card.round ?? S.idx + 1) - 1) % 4;
+}
+function cardText(card, t) {
+  return card.text.replaceAll("{name}", S.players[t]).replaceAll("{partner}", S.players[partnerOf(t)]);
+}
+
+function screenCard(relog = true) {
+  if (S.idx >= S.queue.length) return screenEnd();
+  const c = S.queue[S.idx];
+  const t = targetFor(c);
+  const text = cardText(c, t);
+  if (relog) log("card_shown", { cardId: c.id, round: c.round, stage: c.stage, mechanic: c.mechanic,
+    target: c.target === "one" ? S.players[t] : c.target, text });
+
+  render(`
+    <div class="row muted" style="align-items:center">
+      <span>Раунд ${c.round ?? "–"} · ${c.stage === "B" ? "ставка" : "разогрев"}</span>
+      <span style="text-align:right">${S.idx + 1}/${S.queue.length}</span>
+    </div>
+    <div class="timer" id="timer"><div></div></div>
+    <div class="card ${c.stage === "B" ? "B" : ""}">
+      <div><span class="tag">${MECH[c.mechanic] ?? c.mechanic}</span>${(c.tags || []).map(x => `<span class="tag">${esc(x)}</span>`).join("")}</div>
+      <div class="qtext">${esc(text)}</div>
+      <div id="mech"></div>
+    </div>
+    ${FB_HTML}
+    <div class="spacer"></div>
+    <div class="row">
+      <button id="pass">🃏 Пас</button>
+      <button class="primary" id="next">Дальше →</button>
+    </div>
+  `);
+
+  // таймер: зелёный → красный после лимита, но не блокирует
+  const start = Date.now(), bar = document.querySelector("#timer > div"), wrap = document.getElementById("timer");
+  const tick = () => {
+    const p = (Date.now() - start) / 1000 / CARD_SECONDS;
+    bar.style.width = Math.min(100, p * 100) + "%";
+    wrap.classList.toggle("over", p >= 1);
+  };
+  tick(); timerId = setInterval(tick, 1000);
+
+  bindFeedback(c);
+  document.getElementById("next").onclick = () => {
+    log("card_done", { cardId: c.id });
+    markPlayed(c.id); S.idx++; screenCard();
+  };
+  document.getElementById("pass").onclick = () => screenPass(c);
+
+  mechanics[c.mechanic]?.(c, t, document.getElementById("mech"));
+}
+
+const FB_HTML = `<div class="fb">
+  <button data-fb="boring">😐 скучно</button>
+  <button data-fb="too_much">🚫 слишком</button>
+  <button data-fb="fire">🔥 огонь</button></div>`;
+function bindFeedback(c) {
+  const cur = store.get("stats", {}).cardFb?.[c.id];
+  $app.querySelectorAll("[data-fb]").forEach(b => {
+    if (cur && b.dataset.fb === cur) b.classList.add("on");
+    b.onclick = () => {
+      const on = !b.classList.contains("on");
+      $app.querySelectorAll("[data-fb]").forEach(x => x.classList.remove("on"));
+      if (on) b.classList.add("on");
+      log("feedback", { cardId: c.id, value: on ? b.dataset.fb : null });
+      saveTagStats(c, on ? b.dataset.fb : null);
+    };
+  });
+}
+
+/* ---------- Механики ---------- */
+const mechanics = {
+  talk() {},
+
+  point(c, t, el) {
+    el.innerHTML = `<button class="big" id="cd">Отсчёт 3…2…1</button>`;
+    el.querySelector("#cd").onclick = () => {
+      let n = 3;
+      el.innerHTML = `<div class="reveal" id="n">3</div>`;
+      const iv = setInterval(() => {
+        n--;
+        if (n > 0) { el.querySelector("#n").textContent = n; return; }
+        clearInterval(iv);
+        el.innerHTML = `<div class="reveal">👉 Показывайте!</div>
+          <div class="muted">На кого указали больше всего?</div>
+          <div class="names">${S.players.map((p, i) => `<button data-i="${i}">${esc(p)}</button>`).join("")}</div>`;
+        el.querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
+          el.querySelectorAll("[data-i]").forEach(x => x.classList.remove("on"));
+          b.classList.add("on");
+          log("point_result", { cardId: c.id, most: S.players[+b.dataset.i] });
+        });
+      }, 1000);
+    };
+  },
+
+  scale(c, t, el) {
+    el.innerHTML = `<button class="big" id="s">${esc(S.players[t])} выбирает число втайне</button>`;
+    el.querySelector("#s").onclick = () => {
+      const card = S.queue[S.idx];
+      handOver(S.players[t], "Остальные не смотрят.", () => {
+        render(`
+          <h2>${esc(S.players[t])}, твоё число</h2>
+          <div class="reveal" id="v">5</div>
+          <input type="range" min="1" max="10" value="5" id="r">
+          <button class="primary big" id="ok">Спрятать</button>`);
+        const r = document.getElementById("r");
+        r.oninput = () => document.getElementById("v").textContent = r.value;
+        document.getElementById("ok").onclick = () => {
+          const value = +r.value;
+          render(`
+            <div class="card"><div class="qtext">${esc(cardText(card, t))}</div>
+            <div class="muted">Все остальные по очереди называют догадку вслух.</div>
+            <button class="primary big" id="rv">Показать ответ</button></div>`);
+          document.getElementById("rv").onclick = () => {
+            log("scale_result", { cardId: card.id, player: S.players[t], value });
+            revealAndContinue(card, `<div class="reveal">${value}</div>`);
+          };
+        };
+      });
+    };
+  },
+
+  guess_partner(c, t, el) {
+    const p = partnerOf(t);
+    el.innerHTML = `<div class="muted">${esc(S.players[t])} пишет ответ втайне, потом ${esc(S.players[p])} угадывает вслух.</div>
+      <button class="big" id="s">Телефон → ${esc(S.players[t])}</button>`;
+    el.querySelector("#s").onclick = () => {
+      const card = S.queue[S.idx];
+      handOver(S.players[t], "Напиши свой настоящий ответ.", () => {
+        render(`
+          <h2>${esc(S.players[t])}, твой ответ</h2>
+          <div class="muted">${esc(cardText(card, t))}</div>
+          <textarea id="a" placeholder="Коротко"></textarea>
+          <button class="primary big" id="ok">Спрятать</button>`);
+        document.getElementById("ok").onclick = () => {
+          const answer = document.getElementById("a").value.trim();
+          render(`
+            <div class="card"><div class="qtext">${esc(cardText(card, t))}</div>
+            <div class="muted">${esc(S.players[p])}, угадывай вслух!</div>
+            <button class="primary big" id="rv">Показать ответ</button></div>`);
+          document.getElementById("rv").onclick = () => {
+            revealAndContinue(card, `<div class="qtext center">«${esc(answer || "…")}»</div>
+              <div class="row"><button id="hit">Угадал(а)</button><button id="miss">Мимо</button></div>`, root => {
+              const mark = hit => () => {
+                log("guess_result", { cardId: card.id, player: S.players[t], guesser: S.players[p], answer, hit });
+                root.querySelector("#hit").disabled = root.querySelector("#miss").disabled = true;
+              };
+              root.querySelector("#hit").onclick = mark(true);
+              root.querySelector("#miss").onclick = mark(false);
+            });
+          };
+        };
+      });
+    };
+  },
+
+  anon_count(c, t, el) {
+    el.innerHTML = `<div class="muted">Телефон идёт по кругу, каждый втайне жмёт «да» или «нет». Покажем только общее число.</div>
+      <button class="big" id="s">Начать голосование</button>`;
+    el.querySelector("#s").onclick = () => {
+      const card = S.queue[S.idx];
+      const answers = {};
+      const ask = async i => {
+        if (i >= 4) {
+          const yes = Object.values(answers).filter(Boolean).length;
+          // кто как ответил — только в зашифрованном виде, читает админ на ПК (admin/sealed.py)
+          const sealed = await seal({ cardId: card.id, text: card.text, answers });
+          log("anon_result", { cardId: card.id, yes, of: 4, sealed });
+          return revealAndContinue(card, `<div class="reveal">${yes} из 4</div><div class="muted center">сказали «да»</div>`);
+        }
+        handOver(S.players[i], "Ответь честно: сидящие рядом не увидят твой ответ.", () => {
+          render(`
+            <div class="card"><div class="qtext">${esc(card.text)}</div></div>
+            <div class="row"><button class="big" id="y">Да</button><button class="big" id="n">Нет</button></div>`);
+          document.getElementById("y").onclick = () => { answers[S.players[i]] = true; hideThen(() => ask(i + 1)); };
+          document.getElementById("n").onclick = () => { answers[S.players[i]] = false; hideThen(() => ask(i + 1)); };
+        });
+      };
+      ask(0);
+    };
+  },
+};
+
+// после скрытого ввода возвращаемся к карточке, но уже с ответом
+function revealAndContinue(card, html, bind) {
+  render(`
+    <div class="card ${card.stage === "B" ? "B" : ""}">
+      <div class="qtext">${esc(cardText(card, targetFor(card)))}</div>
+      <div id="res">${html}</div>
+    </div>
+    <div class="muted center">Обсудите, если хочется.</div>
+    ${FB_HTML}
+    <div class="spacer"></div>
+    <button class="primary big" id="next">Дальше →</button>`);
+  bind?.(document.getElementById("res"));
+  bindFeedback(card);
+  document.getElementById("next").onclick = () => {
+    log("card_done", { cardId: card.id });
+    markPlayed(card.id); S.idx++; screenCard();
+  };
+}
+
+/* ---------- Шифрование для админа: AES-GCM + RSA-OAEP, закрытый ключ только на ПК ---------- */
+const b64e = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64d = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+async function seal(obj) {
+  const pub = await crypto.subtle.importKey("spki", b64d(ADMIN_PUBKEY), { name: "RSA-OAEP", hash: "SHA-256" }, false, ["encrypt"]);
+  const aes = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aes, new TextEncoder().encode(JSON.stringify(obj)));
+  const k = await crypto.subtle.encrypt({ name: "RSA-OAEP" }, pub, await crypto.subtle.exportKey("raw", aes));
+  return { k: b64e(k), iv: b64e(iv), ct: b64e(ct) };
+}
+
+/* ---------- Пас ---------- */
+function screenPass(card) {
+  render(`
+    <h2>Кто пасует?</h2>
+    <div class="muted">Карточка уйдёт без объяснений.</div>
+    <div class="names">${S.players.map((p, i) =>
+      `<button data-i="${i}" ${S.passes[i] ? "" : "disabled"}>${esc(p)} · ${S.passes[i]}</button>`).join("")}</div>
+    <button id="back">Назад к карточке</button>`);
+  $app.querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
+    const i = +b.dataset.i;
+    S.passes[i]--;
+    log("pass", { cardId: card.id, player: S.players[i] });
+    markPlayed(card.id); S.idx++; screenCard();
+  });
+  document.getElementById("back").onclick = () => screenCard(false);  // не дублируем card_shown
+}
+
+/* ---------- Статистика между вечерами ---------- */
+function markPlayed(id) {
+  const st = store.get("stats", { played: [], tags: {} });
+  if (!st.played.includes(id)) st.played.push(id);
+  store.set("stats", st);
+}
+function saveTagStats(card, value) {
+  const st = store.get("stats", { played: [], tags: {} });
+  st.cardFb = st.cardFb || {};
+  st.cardFb[card.id] = value;   // последняя оценка карточки; веса тегов считаются на ПК из логов
+  store.set("stats", st);
+}
+
+/* ---------- Финал и экспорт ---------- */
+function screenEnd() {
+  log("session_end");
+  S.endedAt = new Date().toISOString();
+  store.set("currentSession", S);
+  const mins = Math.round((Date.now() - S.startMs) / 60000);
+  render(`
+    <h1>Вечер сыгран</h1>
+    <div class="muted">Длительность: ${mins} мин. Карточек: ${S.queue.length}.</div>
+    <div class="muted">Сохраните результаты и перенесите на ПК в папку <b>sessions/</b>. Анонимные ответы в файле зашифрованы.</div>
+    <div class="spacer"></div>
+    <button class="primary big" id="exp">Сохранить результаты</button>
+    <button class="big" id="again">В начало</button>`);
+  document.getElementById("exp").onclick = exportLog;
+  document.getElementById("again").onclick = screenSetup;
+}
+
+async function exportLog() {
+  const out = { ...S }; delete out.startMs; delete out.queue;
+  out.cardIds = S.queue.map(c => c.id);
+  const name = `session_${S.id}.json`;
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const file = new File([blob], name, { type: "application/json" });
+  try {
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
+  } catch (e) { if (e.name === "AbortError") return; }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js");
+screenSetup();
+</script>
+</body>
+</html>
