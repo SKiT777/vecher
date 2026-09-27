@@ -61,20 +61,20 @@
 <script type="application/json" id="defaultDeck">
 {
  "id": "pilot",
- "title": "Пилот: нейтральный",
+ "title": "Пилот: обсуждаем вместе",
  "cards": [
   {
    "id": "p01a",
    "round": 1,
    "stage": "A",
-   "mechanic": "scale",
+   "mechanic": "fingers",
    "target": "all",
    "intensity": 1,
    "tags": [
     "быт",
     "юмор"
    ],
-   "text": "По шкале от 1 до 10: насколько ты жаворонок? 1 — сова до мозга костей, 10 — бодр(а) в 6 утра."
+   "text": "На счёт три покажите на пальцах: насколько вы жаворонок? 0 — сова до мозга костей, 10 — бодр(а) в 6 утра."
   },
   {
    "id": "p01b",
@@ -84,35 +84,40 @@
    "target": "all",
    "intensity": 1,
    "tags": [
-    "личное"
+    "быт",
+    "пары"
    ],
-   "text": "Каждый по очереди: какой день за последний год ты бы с удовольствием прожил(а) ещё раз?"
+   "text": "Каждая пара: опишите своё идеальное воскресенье. Совпадают ли ваши версии внутри пары?"
   },
   {
    "id": "p02a",
    "round": 2,
    "stage": "A",
-   "mechanic": "guess_partner",
+   "mechanic": "choice",
    "target": "all",
    "intensity": 1,
    "tags": [
-    "личное",
-    "юмор"
+    "путешествия"
    ],
-   "text": "Какой свой талант ты считаешь самым бесполезным?"
+   "text": "Отпуск мечты: море или горы?",
+   "options": [
+    "Море",
+    "Горы"
+   ]
   },
   {
    "id": "p02b",
    "round": 2,
    "stage": "B",
-   "mechanic": "talk",
+   "mechanic": "together",
    "target": "all",
-   "intensity": 2,
+   "intensity": 1,
    "tags": [
-    "личное",
-    "прошлое"
+    "путешествия",
+    "мы"
    ],
-   "text": "Каждый по очереди: о чём ты мечтал(а) в 15 лет и что от этой мечты осталось сейчас?"
+   "text": "Вместе за 2 минуты спланируйте поездку вчетвером: куда, когда и кто за что отвечает.",
+   "seconds": 120
   },
   {
    "id": "p03a",
@@ -131,65 +136,70 @@
    "id": "p03b",
    "round": 3,
    "stage": "B",
-   "mechanic": "anon_count",
+   "mechanic": "talk",
    "target": "all",
    "intensity": 1,
    "tags": [
     "юмор",
-    "быт"
+    "мы"
    ],
-   "text": "Я хотя бы раз засыпал(а) в кинотеатре."
+   "text": "Тот, на кого показали больше всех, — защищайся! Остальные: почему именно он(а)?"
   },
   {
    "id": "p04a",
    "round": 4,
    "stage": "A",
-   "mechanic": "guess_partner",
+   "mechanic": "hands",
    "target": "all",
    "intensity": 1,
    "tags": [
-    "мечты",
-    "деньги"
+    "юмор",
+    "еда"
    ],
-   "text": "На что ты без раздумий потратил(а) бы 100 000 рублей прямо завтра?"
+   "text": "Поднимите руку, кто хоть раз ел(а) что-то упавшее на пол по «правилу пяти секунд»."
   },
   {
    "id": "p04b",
    "round": 4,
    "stage": "B",
-   "mechanic": "anon_count",
+   "mechanic": "talk",
    "target": "all",
    "intensity": 1,
    "tags": [
-    "юмор",
-    "быт"
+    "еда",
+    "мы"
    ],
-   "text": "Я хотя бы раз ел(а) что-то, упавшее на пол, по «правилу пяти секунд»."
+   "text": "Какое блюдо каждый из вас готовит лучше всех? Решите, когда мы его попробуем."
   },
   {
    "id": "p05a",
    "round": 5,
    "stage": "A",
-   "mechanic": "scale",
+   "mechanic": "choice",
    "target": "all",
    "intensity": 1,
    "tags": [
-    "личное"
+    "мы"
    ],
-   "text": "По шкале от 1 до 10: насколько ты любишь сюрпризы?"
+   "text": "Идеальный вечер вчетвером: дома с настолками или выбраться куда-то?",
+   "options": [
+    "Дома",
+    "Выбраться"
+   ]
   },
   {
    "id": "p05b",
    "round": 5,
    "stage": "B",
-   "mechanic": "talk",
+   "mechanic": "together",
    "target": "all",
    "intensity": 1,
    "tags": [
     "мы",
-    "путешествия"
+    "планы"
    ],
-   "text": "Каждый по очереди: куда бы ты поехал(а) с нами вчетвером, если бы можно было уже завтра?"
+   "text": "Вместе договоритесь, чем займёмся в следующий раз, и назначьте дату.",
+   "seconds": 90
   }
  ]
 }
@@ -201,6 +211,10 @@ const CARD_SECONDS = 75;       // мягкий лимит на карточку:
 const PASSES_PER_PLAYER = 2;
 const MECH = {
   talk: "Обсуждаем",
+  fingers: "Пальцы 0–10",
+  choice: "Выбор",
+  hands: "Руки вверх",
+  together: "Вместе",
   scale: "Шкала 1–10",
   guess_partner: "Угадай партнёра",
   point: "Показываем пальцем",
@@ -384,23 +398,57 @@ function bindFeedback(c) {
 const mechanics = {
   talk() {},
 
+  // все одновременно показывают пальцем на человека
   point(c, t, el) {
-    el.innerHTML = `<button class="big" id="cd">Отсчёт 3…2…1</button>`;
-    el.querySelector("#cd").onclick = () => {
-      let n = 3;
-      el.innerHTML = `<div class="reveal" id="n">3</div>`;
+    countdown(el, "👉 Показывайте!", "На кого указали больше всего?", res => {
+      res.innerHTML = `<div class="names">${S.players.map((p, i) => `<button data-i="${i}">${esc(p)}</button>`).join("")}</div>`;
+      res.querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
+        res.querySelectorAll("[data-i]").forEach(x => x.classList.remove("on"));
+        b.classList.add("on");
+        log("point_result", { cardId: c.id, most: S.players[+b.dataset.i] });
+      });
+    });
+  },
+
+  // все одновременно показывают число на пальцах
+  fingers(c, t, el) {
+    countdown(el, "✋ Пальцы!", "У кого самая большая разница — объясните друг другу.");
+  },
+
+  // левая рука — вариант A, правая — B
+  choice(c, t, el) {
+    const [l, r] = c.options || ["A", "B"];
+    el.innerHTML = `<div class="row center"><div class="pair"><div class="muted">левая рука</div><b>${esc(l)}</b></div>
+      <div class="pair"><div class="muted">правая рука</div><b>${esc(r)}</b></div></div><div id="cdw"></div>`;
+    countdown(el.querySelector("#cdw"), "🙌 Руки!", "Кто оказался в меньшинстве — защищайте свой выбор.");
+  },
+
+  // поднимите руку, если…; отмечаем, сколько рук
+  hands(c, t, el) {
+    countdown(el, "✋ Руки вверх!", "Сколько рук? Истории — вслух.", res => {
+      res.innerHTML = `<div class="names">${[0, 1, 2, 3, 4].map(n => `<button data-n="${n}">${n}</button>`).join("")}</div>`;
+      res.querySelectorAll("[data-n]").forEach(b => b.onclick = () => {
+        res.querySelectorAll("[data-n]").forEach(x => x.classList.remove("on"));
+        b.classList.add("on");
+        log("hands_result", { cardId: c.id, count: +b.dataset.n });
+      });
+    });
+  },
+
+  // общее задание на всех с таймером
+  together(c, t, el) {
+    const total = c.seconds || 120;
+    const fmt = x => `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`;
+    el.innerHTML = `<button class="big" id="go">Запустить таймер ${fmt(total)}</button>`;
+    el.querySelector("#go").onclick = () => {
+      let left = total;
+      el.innerHTML = `<div class="reveal" id="clk">${fmt(left)}</div>`;
       const iv = setInterval(() => {
-        n--;
-        if (n > 0) { el.querySelector("#n").textContent = n; return; }
-        clearInterval(iv);
-        el.innerHTML = `<div class="reveal">👉 Показывайте!</div>
-          <div class="muted">На кого указали больше всего?</div>
-          <div class="names">${S.players.map((p, i) => `<button data-i="${i}">${esc(p)}</button>`).join("")}</div>`;
-        el.querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
-          el.querySelectorAll("[data-i]").forEach(x => x.classList.remove("on"));
-          b.classList.add("on");
-          log("point_result", { cardId: c.id, most: S.players[+b.dataset.i] });
-        });
+        const clk = el.querySelector("#clk");
+        if (!clk) return clearInterval(iv);          // ушли с карточки
+        left--;
+        clk.textContent = fmt(Math.max(0, left));
+        if (left <= 0) { clearInterval(iv); clk.textContent = "Время!"; navigator.vibrate?.([200, 100, 200]); }
       }, 1000);
     };
   },
@@ -495,6 +543,24 @@ const mechanics = {
     };
   },
 };
+
+// отсчёт 3-2-1, потом крупная команда; after(res) — место под отметку результата
+function countdown(el, go, hint, after) {
+  el.innerHTML = `<button class="big" id="cd">Отсчёт 3…2…1</button>`;
+  el.querySelector("#cd").onclick = () => {
+    let n = 3;
+    el.innerHTML = `<div class="reveal" id="n">3</div>`;
+    const iv = setInterval(() => {
+      const num = el.querySelector("#n");
+      if (!num) return clearInterval(iv);
+      if (--n > 0) { num.textContent = n; return; }
+      clearInterval(iv);
+      navigator.vibrate?.(150);
+      el.innerHTML = `<div class="reveal">${go}</div><div class="muted center">${hint}</div><div id="after"></div>`;
+      after?.(el.querySelector("#after"));
+    }, 1000);
+  };
+}
 
 // телефон по кругу: каждый втайне что-то вводит, потом done(массив ответов по игрокам)
 function collectSecrets(card, formHtml, read, done) {
