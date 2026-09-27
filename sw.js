@@ -1,5 +1,5 @@
 // Офлайн-кэш. При изменении файлов поднимите версию, чтобы телефон подтянул новое.
-const VERSION = "v1";
+const VERSION = "v2";
 const FILES = ["./", "index.html", "admin-key.js", "manifest.json", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
