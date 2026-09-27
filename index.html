@@ -13,651 +13,427 @@
     --a: #5b8cff; --b: #ff4f7b; --ok: #3ecf8e; --line: #2e2739;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; background: var(--bg); color: var(--text);
+  html, body { margin: 0; background: var(--bg); color: var(--text); overflow-x: hidden;
     font: 18px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   #app { max-width: 520px; margin: 0 auto; min-height: 100dvh; padding: 16px;
     display: flex; flex-direction: column; gap: 14px; }
-  h1 { font-size: 26px; margin: 8px 0 0; }
-  h2 { font-size: 20px; margin: 0; }
+  h1 { font-size: 28px; margin: 8px 0 0; }
+  h2 { font-size: 21px; margin: 0; }
   .muted { color: var(--muted); font-size: 15px; }
-  input, textarea { width: 100%; padding: 12px 14px; font: inherit; color: var(--text);
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
-  textarea { min-height: 90px; resize: vertical; }
-  button { font: inherit; border: 0; border-radius: 14px; padding: 14px 16px; cursor: pointer;
+  button { font: inherit; border-radius: 14px; padding: 14px 16px; cursor: pointer;
     background: var(--card); color: var(--text); border: 1px solid var(--line); }
   button.primary { background: var(--text); color: var(--bg); font-weight: 600; border: 0; }
   button.big { width: 100%; padding: 18px; font-size: 19px; }
+  button.link { background: none; border: 0; color: var(--muted); font-size: 14px; padding: 6px; }
   button:disabled { opacity: .35; }
   .row { display: flex; gap: 10px; }
   .row > * { flex: 1; }
-  .pair { border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: grid; gap: 8px; }
-  .card { background: var(--card); border-radius: 22px; padding: 22px 20px; display: grid; gap: 14px;
-    border-top: 5px solid var(--a); }
-  .card.B { border-top-color: var(--b); }
+  .spacer { flex: 1; }
+
+  .card { background: var(--card); border-radius: 22px; padding: 22px 20px; display: grid; gap: 16px;
+    border-top: 5px solid var(--a); touch-action: pan-y; transition: transform .2s, opacity .2s; }
   .tag { display: inline-block; font-size: 13px; padding: 3px 10px; border-radius: 99px;
     background: #ffffff14; color: var(--muted); margin-right: 6px; }
-  .qtext { font-size: 23px; line-height: 1.35; font-weight: 500; }
-  .timer { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
-  .timer > div { height: 100%; width: 0; background: var(--ok); transition: width 1s linear, background .3s; }
-  .timer.over > div { background: var(--b); }
+  .qtext { font-size: 24px; line-height: 1.35; font-weight: 500; }
+  .format { font-size: 15px; color: var(--a); }
+
+  .prompts { display: grid; gap: 10px; }
+  .prompt { padding: 12px 14px; border-radius: 14px; background: #ffffff0a; font-size: 18px;
+    animation: in .25s ease-out; }
+  .prompt.deep { background: #ff4f7b1f; border: 1px solid #ff4f7b66; }
+  .prompt .muted { display: block; font-size: 13px; margin-bottom: 2px; }
+  @keyframes in { from { opacity: 0; transform: translateY(6px); } }
+
+  .clock { display: flex; align-items: center; gap: 10px; }
+  .clock .t { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 15px; min-width: 44px; }
+  .bar { flex: 1; height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; background: var(--ok); transition: width 1s linear; }
+  .bar.over > div { background: var(--b); }
+
+  .choice { display: grid; gap: 10px; }
   .fb { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .fb button { padding: 10px 4px; font-size: 15px; }
-  .fb button.on { background: var(--text); color: var(--bg); }
-  .reveal { font-size: 44px; font-weight: 700; text-align: center; padding: 8px 0; }
-  .center { text-align: center; }
-  .spacer { flex: 1; }
-  .names { display: flex; flex-wrap: wrap; gap: 8px; }
-  .names button { flex: 1 1 40%; }
-  .names button.on { background: var(--b); border-color: var(--b); }
-  input[type=range] { padding: 0; accent-color: var(--b); height: 36px; background: none; border: 0; }
-  .hidden-screen { background: #000; border-radius: 22px; padding: 40px 20px; text-align: center; display: grid; gap: 18px; }
+  .fb button { padding: 16px 4px; }
+  .hint { font-size: 13px; color: var(--muted); text-align: center; }
 </style>
 </head>
 <body>
 <div id="app"></div>
-<input type="file" id="deckFile" accept=".json,application/json" hidden>
 
-<!-- Колода по умолчанию. Готовится на ПК в decks/*.json, сюда подставляется при сборке или грузится кнопкой. -->
+<!-- Колода по умолчанию. Готовится на ПК в decks/*.json и вставляется сюда. -->
 <script type="application/json" id="defaultDeck">
 {
- "id": "pilot",
- "title": "Пилот: обсуждаем вместе",
- "cards": [
+ "id": "topics-1",
+ "title": "Темы: нейтральные",
+ "topics": [
   {
-   "id": "p01a",
-   "round": 1,
-   "stage": "A",
-   "mechanic": "fingers",
-   "target": "all",
-   "intensity": 1,
+   "id": "t01",
    "tags": [
-    "быт",
-    "юмор"
+    "детство"
    ],
-   "text": "На счёт три покажите на пальцах: насколько вы жаворонок? 0 — сова до мозга костей, 10 — бодр(а) в 6 утра."
+   "format": "Каждый рассказывает по очереди",
+   "question": "Какая игра, место или вещь из детства мгновенно возвращает тебя туда?",
+   "prompts": [
+    "Кто был твоим главным другом в то время и где он сейчас?",
+    "За что тебя чаще всего ругали?",
+    "Чем бы ты удивил(а) себя десятилетнего(ю), если бы встретил(а)?"
+   ],
+   "deeper": "Что из детства ты бы хотел(а) вернуть во взрослую жизнь?"
   },
   {
-   "id": "p01b",
-   "round": 1,
-   "stage": "B",
-   "mechanic": "talk",
-   "target": "all",
-   "intensity": 1,
+   "id": "t02",
    "tags": [
-    "быт",
-    "пары"
+    "работа"
    ],
-   "text": "Каждая пара: опишите своё идеальное воскресенье. Совпадают ли ваши версии внутри пары?"
+   "format": "Каждый рассказывает по очереди",
+   "question": "Расскажи про свою самую первую работу или подработку.",
+   "prompts": [
+    "Сколько платили и на что ты потратил(а) первые заработанные деньги?",
+    "Самый странный начальник, коллега или клиент за всё время?",
+    "Кем ты мечтал(а) стать в детстве и насколько близко к этому оказался(ась)?"
+   ],
+   "deeper": "Если бы деньги не были важны, чем бы ты занимался(ась) каждый день?"
   },
   {
-   "id": "p02a",
-   "round": 2,
-   "stage": "A",
-   "mechanic": "choice",
-   "target": "all",
-   "intensity": 1,
+   "id": "t03",
+   "tags": [
+    "пары",
+    "мы"
+   ],
+   "format": "Каждая пара — две версии одной истории",
+   "question": "Как вы познакомились? Каждый в паре рассказывает свою версию, второй не перебивает.",
+   "prompts": [
+    "Каким было первое впечатление друг о друге?",
+    "Что пошло не так на первом свидании или в первые недели?",
+    "Кто первым сказал «люблю» и как это было?"
+   ],
+   "deeper": "В какой момент ты понял(а), что это всерьёз?"
+  },
+  {
+   "id": "t04",
    "tags": [
     "путешествия"
    ],
-   "text": "Отпуск мечты: море или горы?",
-   "options": [
-    "Море",
-    "Горы"
-   ]
-  },
-  {
-   "id": "p02b",
-   "round": 2,
-   "stage": "B",
-   "mechanic": "together",
-   "target": "all",
-   "intensity": 1,
-   "tags": [
-    "путешествия",
-    "мы"
+   "format": "Каждый рассказывает по очереди",
+   "question": "Какое путешествие ты вспоминаешь чаще всего? Не обязательно лучшее — именно то, что чаще всплывает в памяти.",
+   "prompts": [
+    "Что в поездках у тебя чаще всего идёт не по плану?",
+    "В каком городе или стране ты мог(ла) бы жить?",
+    "Куда ты точно не поедешь больше никогда и почему?"
    ],
-   "text": "Вместе за 2 минуты спланируйте поездку вчетвером: куда, когда и кто за что отвечает.",
-   "seconds": 120
+   "deeper": "Куда бы мы могли поехать вчетвером и что там делать?"
   },
   {
-   "id": "p03a",
-   "round": 3,
-   "stage": "A",
-   "mechanic": "point",
-   "target": "all",
-   "intensity": 1,
-   "tags": [
-    "юмор",
-    "мы"
-   ],
-   "text": "Кто из нас четверых скорее всех бросит всё и уедет жить на край света?"
-  },
-  {
-   "id": "p03b",
-   "round": 3,
-   "stage": "B",
-   "mechanic": "talk",
-   "target": "all",
-   "intensity": 1,
-   "tags": [
-    "юмор",
-    "мы"
-   ],
-   "text": "Тот, на кого показали больше всех, — защищайся! Остальные: почему именно он(а)?"
-  },
-  {
-   "id": "p04a",
-   "round": 4,
-   "stage": "A",
-   "mechanic": "hands",
-   "target": "all",
-   "intensity": 1,
-   "tags": [
-    "юмор",
-    "еда"
-   ],
-   "text": "Поднимите руку, кто хоть раз ел(а) что-то упавшее на пол по «правилу пяти секунд»."
-  },
-  {
-   "id": "p04b",
-   "round": 4,
-   "stage": "B",
-   "mechanic": "talk",
-   "target": "all",
-   "intensity": 1,
+   "id": "t05",
    "tags": [
     "еда",
-    "мы"
+    "семья"
    ],
-   "text": "Какое блюдо каждый из вас готовит лучше всех? Решите, когда мы его попробуем."
+   "format": "Каждый рассказывает по очереди",
+   "question": "Какое блюдо для тебя пахнет домом? Кто его готовил и когда?",
+   "prompts": [
+    "Самое странное, что ты пробовал(а) в жизни?",
+    "Что ты сам(а) готовишь на пять с плюсом?",
+    "Какую еду ты терпеть не можешь, хотя все её любят?"
+   ],
+   "deeper": "Какое блюдо каждый из нас приготовит на следующую встречу?"
   },
   {
-   "id": "p05a",
-   "round": 5,
-   "stage": "A",
-   "mechanic": "choice",
-   "target": "all",
-   "intensity": 1,
+   "id": "t06",
    "tags": [
-    "мы"
+    "хобби"
    ],
-   "text": "Идеальный вечер вчетвером: дома с настолками или выбраться куда-то?",
-   "options": [
-    "Дома",
-    "Выбраться"
-   ]
+   "format": "Каждый рассказывает по очереди",
+   "question": "Чем ты когда-то увлекался(ась) так сильно, что тратил(а) на это всё свободное время?",
+   "prompts": [
+    "Почему бросил(а) — или почему до сих пор нет?",
+    "Какое хобби ты давно хочешь попробовать, но всё откладываешь?",
+    "Что у тебя получается лучше, чем у большинства людей?"
+   ],
+   "deeper": "Чему из этого ты мог(ла) бы научить остальных троих?"
   },
   {
-   "id": "p05b",
-   "round": 5,
-   "stage": "B",
-   "mechanic": "together",
-   "target": "all",
-   "intensity": 1,
+   "id": "t07",
    "tags": [
-    "мы",
-    "планы"
+    "мечты"
    ],
-   "text": "Вместе договоритесь, чем займёмся в следующий раз, и назначьте дату.",
-   "seconds": 90
+   "format": "Обсуждаем вместе",
+   "question": "Представьте: у каждого год оплаченной свободы — без работы и обязательств, но потратить его нужно на одно дело. Какое?",
+   "prompts": [
+    "Где бы ты провёл(а) этот год?",
+    "Что бы ты сделал(а) в первую неделю?",
+    "С кем из нас ты бы объединился(ась) в этом деле?"
+   ],
+   "deeper": "Что мешает сделать хотя бы маленькую часть этого уже сейчас?"
+  },
+  {
+   "id": "t08",
+   "tags": [
+    "кино",
+    "книги"
+   ],
+   "format": "Каждый рассказывает по очереди",
+   "question": "Какой фильм, книга или сериал тебя по-настоящему зацепил — так, что думал(а) о нём ещё несколько дней?",
+   "prompts": [
+    "Что ты можешь пересматривать бесконечно?",
+    "Что ты всем советуешь, но никто так и не посмотрел?",
+    "Какой «шедевр» тебе совсем не зашёл?"
+   ],
+   "deeper": "Что мы посмотрим вместе в следующий раз?"
+  },
+  {
+   "id": "t09",
+   "tags": [
+    "навыки"
+   ],
+   "format": "Каждый рассказывает по очереди",
+   "question": "Чему ты научился(ась) уже во взрослом возрасте и чем гордишься?",
+   "prompts": [
+    "Что из школьной программы реально пригодилось, а что нет?",
+    "Какой навык ты хочешь освоить в ближайший год?",
+    "Кто научил тебя чему-то важному и как это было?"
+   ],
+   "deeper": "Какой совет ты дал(а) бы себе пятилетней давности?"
+  },
+  {
+   "id": "t10",
+   "tags": [
+    "семья",
+    "традиции"
+   ],
+   "format": "Каждый рассказывает по очереди",
+   "question": "Какие традиции были в твоей семье: праздники, привычки, странные ритуалы?",
+   "prompts": [
+    "Как у вас отмечали Новый год?",
+    "Что из этого вы переняли в свою пару, а от чего отказались?",
+    "Какая традиция у вас появилась уже вдвоём?"
+   ],
+   "deeper": "Какую традицию мы могли бы завести вчетвером?"
   }
  ]
 }
 </script>
 
-<script src="admin-key.js"></script>
 <script>
-const CARD_SECONDS = 75;       // мягкий лимит на карточку: 10 карточек ≈ 10–12 минут
-const PASSES_PER_PLAYER = 2;
-const MECH = {
-  talk: "Обсуждаем",
-  fingers: "Пальцы 0–10",
-  choice: "Выбор",
-  hands: "Руки вверх",
-  together: "Вместе",
-  scale: "Шкала 1–10",
-  guess_partner: "Угадай партнёра",
-  point: "Показываем пальцем",
-  anon_count: "Анонимно",
-};
+const SOFT_LIMIT = 10 * 60;   // мягкий лимит на тему, секунд
+const RARE_AFTER = 3;         // после 3 «скучно» по тегу такие темы почти не выпадают
 
 const $app = document.getElementById("app");
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-let deck = JSON.parse(document.getElementById("defaultDeck").textContent);
-let S = null;        // текущая сессия
+const deck = JSON.parse(document.getElementById("defaultDeck").textContent);
+let S = null;         // вечер: { startedAt, topics: [...] }
 let timerId = null;
 
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const partnerOf = i => i ^ 1;  // пары: 0–1 и 2–3
+function render(html) { clearInterval(timerId); $app.innerHTML = html; }
 
-function log(type, data = {}) {
-  S.events.push({ type, ...data });
-  store.set("currentSession", S);
+/* ---------- История между вечерами ---------- */
+// played: id сыгранных тем; boring: { тег: сколько раз скучно }
+const hist = () => store.get("history", { played: [], boring: {} });
+const saveHist = h => store.set("history", h);
+
+function weight(t, h) {
+  const boring = Math.max(0, ...t.tags.map(g => h.boring[g] || 0));
+  return boring >= RARE_AFTER ? 0.1 : 1 / (1 + boring * 0.5);
 }
 
-function render(html) {
-  clearInterval(timerId);
-  $app.innerHTML = html;
+// случайная тема с учётом весов; сыгранные и уже показанные сегодня — не повторяем
+function pickTopic() {
+  const h = hist();
+  const seenToday = new Set(S.topics.map(x => x.id));
+  const pool = deck.topics.filter(t => !h.played.includes(t.id) && !seenToday.has(t.id));
+  if (!pool.length) return null;
+  const ws = pool.map(t => weight(t, h));
+  let r = Math.random() * ws.reduce((a, b) => a + b, 0);
+  return pool.find((t, i) => (r -= ws[i]) <= 0) || pool[pool.length - 1];
 }
 
-/* ---------- Экран 1: игроки ---------- */
-function screenSetup() {
-  const saved = store.get("players", ["", "", "", ""]);
+/* ---------- Экраны ---------- */
+function screenHome() {
+  const h = hist();
+  const left = deck.topics.filter(t => !h.played.includes(t.id)).length;
   render(`
+    <div class="spacer"></div>
     <h1>Вечер вопросов</h1>
-    <div class="muted">Колода: <b>${esc(deck.title)}</b>, карточек: ${deck.cards.length}</div>
-    <div class="pair"><div class="muted">Пара 1</div>
-      <input id="n0" placeholder="Имя" value="${esc(saved[0])}">
-      <input id="n1" placeholder="Имя партнёра" value="${esc(saved[1])}"></div>
-    <div class="pair"><div class="muted">Пара 2</div>
-      <input id="n2" placeholder="Имя" value="${esc(saved[2])}">
-      <input id="n3" placeholder="Имя партнёра" value="${esc(saved[3])}"></div>
-    <button id="load">Загрузить другую колоду…</button>
+    <div class="muted">Одна тема — один разговор минут на 5–10. Не зашла — смахните влево.</div>
+    <div class="muted">Новых тем в колоде: ${left} из ${deck.topics.length}</div>
     <div class="spacer"></div>
-    <button class="primary big" id="go">Начать</button>
+    <button class="primary big" id="go" ${left ? "" : "disabled"}>Начать</button>
+    ${h.played.length ? `<button class="link" id="reset">Сбросить историю сыгранных тем</button>` : ""}
   `);
-  document.getElementById("load").onclick = () => document.getElementById("deckFile").click();
   document.getElementById("go").onclick = () => {
-    const names = [0, 1, 2, 3].map(i => document.getElementById("n" + i).value.trim() || `Игрок ${i + 1}`);
-    store.set("players", names);
-    const now = new Date();
-    S = {
-      id: now.toISOString().slice(0, 16).replace("T", "_").replace(":", "-"),
-      startedAt: now.toISOString(), startMs: now.getTime(),
-      deckId: deck.id, players: names, pairs: [[0, 1], [2, 3]],
-      passes: names.map(() => PASSES_PER_PLAYER),
-      queue: deck.cards.slice(), idx: 0, events: [],
-    };
-    log("session_start", { deck: deck.id });
-    screenIntro();
+    S = { startedAt: new Date().toISOString(), deckId: deck.id, topics: [] };
+    screenTopic();
   };
+  document.getElementById("reset")?.addEventListener("click", () => {
+    if (confirm("Все темы снова станут новыми. Сбросить?")) { saveHist({ played: [], boring: {} }); screenHome(); }
+  });
 }
 
-document.getElementById("deckFile").onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  try {
-    const d = JSON.parse(await f.text());
-    if (!Array.isArray(d.cards)) throw new Error("нет поля cards");
-    deck = d; screenSetup();
-  } catch (err) { alert("Не удалось прочитать колоду: " + err.message); }
-};
+function screenTopic() {
+  const t = pickTopic();
+  if (!t) return screenEnd("Новые темы в колоде закончились.");
+  const rec = { id: t.id, question: t.question, shownAt: new Date().toISOString(), promptsOpened: 0, deeper: false };
+  S.topics.push(rec);
+  store.set("currentEvening", S);
+  const start = Date.now();
 
-function screenIntro() {
   render(`
-    <h1>Готово</h1>
-    <div class="muted">Карточек в игре: ${S.queue.length}. У каждого по ${PASSES_PER_PLAYER} «паса» на вечер.</div>
-    <div class="muted">Под каждой карточкой три кнопки: <b>скучно</b>, <b>слишком</b>, <b>огонь</b>. По ним будем подбирать следующие колоды.</div>
-    <div class="spacer"></div>
-    <button class="primary big" id="go">Первая карточка</button>
-  `);
-  document.getElementById("go").onclick = screenCard;
-}
-
-/* ---------- Общие экраны «передай телефон» ---------- */
-function handOver(name, hint, next) {
-  render(`
-    <div class="spacer"></div>
-    <div class="hidden-screen">
-      <div class="muted">Передай телефон</div>
-      <div class="reveal">${esc(name)}</div>
-      <div class="muted">${hint}</div>
-      <button class="primary big" id="ok">Это я, показать</button>
+    <div class="clock"><span class="t" id="t">0:00</span><div class="bar" id="bar"><div></div></div></div>
+    <div class="card" id="card">
+      <div>${t.tags.map(x => `<span class="tag">${esc(x)}</span>`).join("")}</div>
+      <div class="format">${esc(t.format || "")}</div>
+      <div class="qtext">${esc(t.question)}</div>
+      <div class="prompts" id="prompts"></div>
+      <button id="more">Подкинуть вопрос</button>
     </div>
-    <div class="spacer"></div>
-  `);
-  document.getElementById("ok").onclick = next;
-}
-function hideThen(next) {
-  render(`
-    <div class="spacer"></div>
-    <div class="hidden-screen"><div class="reveal">✓</div><div class="muted">Скрыто</div>
-      <button class="big" id="ok">Дальше</button></div>
-    <div class="spacer"></div>
-  `);
-  document.getElementById("ok").onclick = next;
-}
-
-/* ---------- Экран 3: карточка ---------- */
-function targetFor(card) {
-  // в одном раунде A и B направлены на одного человека; раунды идут по кругу
-  return ((card.round ?? S.idx + 1) - 1) % 4;
-}
-function cardText(card, t) {
-  return card.text.replaceAll("{name}", S.players[t]).replaceAll("{partner}", S.players[partnerOf(t)]);
-}
-
-function screenCard(relog = true) {
-  if (S.idx >= S.queue.length) return screenEnd();
-  const c = S.queue[S.idx];
-  const t = targetFor(c);
-  const text = cardText(c, t);
-  if (relog) log("card_shown", { cardId: c.id, round: c.round, stage: c.stage, mechanic: c.mechanic,
-    target: c.target === "one" ? S.players[t] : c.target, text });
-
-  render(`
-    <div class="row muted" style="align-items:center">
-      <span>Раунд ${c.round ?? "–"} · ${c.stage === "B" ? "ставка" : "разогрев"}</span>
-      <span style="text-align:right">${S.idx + 1}/${S.queue.length}</span>
-    </div>
-    <div class="timer" id="timer"><div></div></div>
-    <div class="card ${c.stage === "B" ? "B" : ""}">
-      <div><span class="tag">${MECH[c.mechanic] ?? c.mechanic}</span>${(c.tags || []).map(x => `<span class="tag">${esc(x)}</span>`).join("")}</div>
-      <div class="qtext">${esc(text)}</div>
-      <div id="mech"></div>
-    </div>
-    ${FB_HTML}
+    <div class="hint">Разговор затих — «Подкинуть вопрос». Тема не заходит — смахните карточку влево.</div>
     <div class="spacer"></div>
     <div class="row">
-      <button id="pass">🃏 Пас</button>
-      <button class="primary" id="next">Дальше →</button>
+      <button id="skip">← Другая тема</button>
+      <button class="primary" id="done">Обсудили ✓</button>
     </div>
   `);
 
-  // таймер: зелёный → красный после лимита, но не блокирует
-  const start = Date.now(), bar = document.querySelector("#timer > div"), wrap = document.getElementById("timer");
+  // мягкий таймер: полоска на 10 минут, потом краснеет, но ничего не прерывает
   const tick = () => {
-    const p = (Date.now() - start) / 1000 / CARD_SECONDS;
-    bar.style.width = Math.min(100, p * 100) + "%";
-    wrap.classList.toggle("over", p >= 1);
+    const sec = Math.round((Date.now() - start) / 1000);
+    document.getElementById("t").textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+    document.querySelector("#bar > div").style.width = Math.min(100, sec / SOFT_LIMIT * 100) + "%";
+    document.getElementById("bar").classList.toggle("over", sec >= SOFT_LIMIT);
   };
   tick(); timerId = setInterval(tick, 1000);
 
-  bindFeedback(c);
-  document.getElementById("next").onclick = () => {
-    log("card_done", { cardId: c.id });
-    markPlayed(c.id); S.idx++; screenCard();
+  // подсказки по одной, последней — вопрос поглубже
+  const $more = document.getElementById("more");
+  $more.onclick = () => {
+    const box = document.getElementById("prompts");
+    if (rec.promptsOpened < t.prompts.length) {
+      box.insertAdjacentHTML("beforeend", `<div class="prompt">${esc(t.prompts[rec.promptsOpened])}</div>`);
+      rec.promptsOpened++;
+      if (rec.promptsOpened === t.prompts.length && t.deeper) $more.textContent = "Поглубже";
+    } else if (t.deeper && !rec.deeper) {
+      box.insertAdjacentHTML("beforeend", `<div class="prompt deep"><span class="muted">поглубже</span>${esc(t.deeper)}</div>`);
+      rec.deeper = true;
+    }
+    if (rec.promptsOpened >= t.prompts.length && (rec.deeper || !t.deeper)) $more.remove();
+    store.set("currentEvening", S);
   };
-  document.getElementById("pass").onclick = () => screenPass(c);
 
-  mechanics[c.mechanic]?.(c, t, document.getElementById("mech"));
+  const finish = () => { rec.seconds = Math.round((Date.now() - start) / 1000); };
+  document.getElementById("skip").onclick = () => { finish(); screenSkip(t, rec); };
+  document.getElementById("done").onclick = () => { finish(); screenRate(t, rec); };
+  swipe(document.getElementById("card"), () => { finish(); screenSkip(t, rec); });
 }
 
-const FB_HTML = `<div class="fb">
-  <button data-fb="boring">😐 скучно</button>
-  <button data-fb="too_much">🚫 слишком</button>
-  <button data-fb="fire">🔥 огонь</button></div>`;
-function bindFeedback(c) {
-  const cur = store.get("stats", {}).cardFb?.[c.id];
-  $app.querySelectorAll("[data-fb]").forEach(b => {
-    if (cur && b.dataset.fb === cur) b.classList.add("on");
-    b.onclick = () => {
-      const on = !b.classList.contains("on");
-      $app.querySelectorAll("[data-fb]").forEach(x => x.classList.remove("on"));
-      if (on) b.classList.add("on");
-      log("feedback", { cardId: c.id, value: on ? b.dataset.fb : null });
-      saveTagStats(c, on ? b.dataset.fb : null);
-    };
+// смахивание карточки влево
+function swipe(el, onLeft) {
+  let x0 = null, dx = 0;
+  el.addEventListener("pointerdown", e => { if (e.target.closest("button")) return; x0 = e.clientX; dx = 0; el.style.transition = "none"; });
+  el.addEventListener("pointermove", e => {
+    if (x0 === null) return;
+    dx = Math.min(0, e.clientX - x0);
+    el.style.transform = `translateX(${dx}px) rotate(${dx / 30}deg)`;
+    el.style.opacity = 1 + dx / 400;
   });
-}
-
-/* ---------- Механики ---------- */
-const mechanics = {
-  talk() {},
-
-  // все одновременно показывают пальцем на человека
-  point(c, t, el) {
-    countdown(el, "👉 Показывайте!", "На кого указали больше всего?", res => {
-      res.innerHTML = `<div class="names">${S.players.map((p, i) => `<button data-i="${i}">${esc(p)}</button>`).join("")}</div>`;
-      res.querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
-        res.querySelectorAll("[data-i]").forEach(x => x.classList.remove("on"));
-        b.classList.add("on");
-        log("point_result", { cardId: c.id, most: S.players[+b.dataset.i] });
-      });
-    });
-  },
-
-  // все одновременно показывают число на пальцах
-  fingers(c, t, el) {
-    countdown(el, "✋ Пальцы!", "У кого самая большая разница — объясните друг другу.");
-  },
-
-  // левая рука — вариант A, правая — B
-  choice(c, t, el) {
-    const [l, r] = c.options || ["A", "B"];
-    el.innerHTML = `<div class="row center"><div class="pair"><div class="muted">левая рука</div><b>${esc(l)}</b></div>
-      <div class="pair"><div class="muted">правая рука</div><b>${esc(r)}</b></div></div><div id="cdw"></div>`;
-    countdown(el.querySelector("#cdw"), "🙌 Руки!", "Кто оказался в меньшинстве — защищайте свой выбор.");
-  },
-
-  // поднимите руку, если…; отмечаем, сколько рук
-  hands(c, t, el) {
-    countdown(el, "✋ Руки вверх!", "Сколько рук? Истории — вслух.", res => {
-      res.innerHTML = `<div class="names">${[0, 1, 2, 3, 4].map(n => `<button data-n="${n}">${n}</button>`).join("")}</div>`;
-      res.querySelectorAll("[data-n]").forEach(b => b.onclick = () => {
-        res.querySelectorAll("[data-n]").forEach(x => x.classList.remove("on"));
-        b.classList.add("on");
-        log("hands_result", { cardId: c.id, count: +b.dataset.n });
-      });
-    });
-  },
-
-  // общее задание на всех с таймером
-  together(c, t, el) {
-    const total = c.seconds || 120;
-    const fmt = x => `${Math.floor(x / 60)}:${String(x % 60).padStart(2, "0")}`;
-    el.innerHTML = `<button class="big" id="go">Запустить таймер ${fmt(total)}</button>`;
-    el.querySelector("#go").onclick = () => {
-      let left = total;
-      el.innerHTML = `<div class="reveal" id="clk">${fmt(left)}</div>`;
-      const iv = setInterval(() => {
-        const clk = el.querySelector("#clk");
-        if (!clk) return clearInterval(iv);          // ушли с карточки
-        left--;
-        clk.textContent = fmt(Math.max(0, left));
-        if (left <= 0) { clearInterval(iv); clk.textContent = "Время!"; navigator.vibrate?.([200, 100, 200]); }
-      }, 1000);
-    };
-  },
-
-  // все четверо втайне ставят число, потом каждый угадывает число партнёра, и открываем всё
-  scale(c, t, el) {
-    el.innerHTML = `<div class="muted">Каждый втайне ставит своё число, потом угадываем числа партнёров.</div>
-      <button class="big" id="s">Начать</button>`;
-    el.querySelector("#s").onclick = () => {
-      const card = S.queue[S.idx];
-      collectSecrets(card, i => `
-          <h2>${esc(S.players[i])}, твоё число</h2>
-          <div class="muted">${esc(card.text)}</div>
-          <div class="reveal" id="v">5</div>
-          <input type="range" min="1" max="10" value="5" id="r"
-            oninput="document.getElementById('v').textContent=this.value">`,
-        () => +document.getElementById("r").value,
-        values => {
-          render(`
-            <div class="card"><div class="qtext">${esc(card.text)}</div>
-            <div class="muted">Каждый по очереди называет вслух, какое число поставил(а) его партнёр.</div>
-            <button class="primary big" id="rv">Показать все числа</button></div>`);
-          document.getElementById("rv").onclick = () => {
-            values.forEach((value, i) => log("scale_result", { cardId: card.id, player: S.players[i], value }));
-            revealAndContinue(card, `<div class="names">${values.map((v, i) =>
-              `<div class="pair center"><div class="muted">${esc(S.players[i])}</div><div class="reveal">${v}</div></div>`).join("")}</div>`);
-          };
-        });
-    };
-  },
-
-  // все четверо пишут ответ про себя, потом по очереди партнёр угадывает
-  guess_partner(c, t, el) {
-    el.innerHTML = `<div class="muted">Каждый втайне пишет свой ответ, потом партнёр угадывает его вслух.</div>
-      <button class="big" id="s">Начать</button>`;
-    el.querySelector("#s").onclick = () => {
-      const card = S.queue[S.idx];
-      collectSecrets(card, i => `
-          <h2>${esc(S.players[i])}, твой ответ</h2>
-          <div class="muted">${esc(card.text)}</div>
-          <textarea id="a" placeholder="Коротко"></textarea>`,
-        () => document.getElementById("a").value.trim(),
-        answers => {
-          const show = i => {
-            if (i >= 4) return revealAndContinue(card, answers.map((a, k) =>
-              `<div class="muted">${esc(S.players[k])}: «${esc(a || "…")}»</div>`).join(""));
-            const p = partnerOf(i);
-            render(`
-              <div class="card"><div class="qtext">${esc(card.text)}</div>
-              <div class="muted">${esc(S.players[p])}, что ответил(а) ${esc(S.players[i])}? Угадывай вслух!</div>
-              <div id="res"><button class="primary big" id="rv">Показать ответ</button></div></div>`);
-            document.getElementById("rv").onclick = () => {
-              const res = document.getElementById("res");
-              res.innerHTML = `<div class="qtext center">«${esc(answers[i] || "…")}»</div>
-                <div class="row"><button id="hit">Угадал(а)</button><button id="miss">Мимо</button></div>`;
-              const mark = hit => () => {
-                log("guess_result", { cardId: card.id, player: S.players[i], guesser: S.players[p], answer: answers[i], hit });
-                show(i + 1);
-              };
-              res.querySelector("#hit").onclick = mark(true);
-              res.querySelector("#miss").onclick = mark(false);
-            };
-          };
-          show(0);
-        });
-    };
-  },
-
-  anon_count(c, t, el) {
-    el.innerHTML = `<div class="muted">Телефон идёт по кругу, каждый втайне жмёт «да» или «нет». Покажем только общее число.</div>
-      <button class="big" id="s">Начать голосование</button>`;
-    el.querySelector("#s").onclick = () => {
-      const card = S.queue[S.idx];
-      const answers = {};
-      const ask = async i => {
-        if (i >= 4) {
-          const yes = Object.values(answers).filter(Boolean).length;
-          // кто как ответил — только в зашифрованном виде, читает админ на ПК (admin/sealed.py)
-          const sealed = await seal({ cardId: card.id, text: card.text, answers });
-          log("anon_result", { cardId: card.id, yes, of: 4, sealed });
-          return revealAndContinue(card, `<div class="reveal">${yes} из 4</div><div class="muted center">сказали «да»</div>`);
-        }
-        handOver(S.players[i], "Ответь честно: сидящие рядом не увидят твой ответ.", () => {
-          render(`
-            <div class="card"><div class="qtext">${esc(card.text)}</div></div>
-            <div class="row"><button class="big" id="y">Да</button><button class="big" id="n">Нет</button></div>`);
-          document.getElementById("y").onclick = () => { answers[S.players[i]] = true; hideThen(() => ask(i + 1)); };
-          document.getElementById("n").onclick = () => { answers[S.players[i]] = false; hideThen(() => ask(i + 1)); };
-        });
-      };
-      ask(0);
-    };
-  },
-};
-
-// отсчёт 3-2-1, потом крупная команда; after(res) — место под отметку результата
-function countdown(el, go, hint, after) {
-  el.innerHTML = `<button class="big" id="cd">Отсчёт 3…2…1</button>`;
-  el.querySelector("#cd").onclick = () => {
-    let n = 3;
-    el.innerHTML = `<div class="reveal" id="n">3</div>`;
-    const iv = setInterval(() => {
-      const num = el.querySelector("#n");
-      if (!num) return clearInterval(iv);
-      if (--n > 0) { num.textContent = n; return; }
-      clearInterval(iv);
-      navigator.vibrate?.(150);
-      el.innerHTML = `<div class="reveal">${go}</div><div class="muted center">${hint}</div><div id="after"></div>`;
-      after?.(el.querySelector("#after"));
-    }, 1000);
+  const end = () => {
+    if (x0 === null) return;
+    x0 = null; el.style.transition = "";
+    if (dx < -90) { el.style.transform = "translateX(-120%) rotate(-12deg)"; el.style.opacity = 0; setTimeout(onLeft, 180); }
+    else { el.style.transform = ""; el.style.opacity = ""; }
   };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+  el.addEventListener("pointerleave", end);
 }
 
-// телефон по кругу: каждый втайне что-то вводит, потом done(массив ответов по игрокам)
-function collectSecrets(card, formHtml, read, done) {
-  const out = [];
-  const ask = i => {
-    if (i >= 4) return done(out);
-    handOver(S.players[i], "Остальные не смотрят.", () => {
-      render(formHtml(i) + `<button class="primary big" id="ok">Спрятать</button>`);
-      document.getElementById("ok").onclick = () => { out[i] = read(); hideThen(() => ask(i + 1)); };
-    });
-  };
-  ask(0);
-}
-
-// после скрытого ввода возвращаемся к карточке, но уже с ответом
-function revealAndContinue(card, html, bind) {
+function screenSkip(t, rec) {
   render(`
-    <div class="card ${card.stage === "B" ? "B" : ""}">
-      <div class="qtext">${esc(cardText(card, targetFor(card)))}</div>
-      <div id="res">${html}</div>
+    <div class="spacer"></div>
+    <h2>Почему мимо?</h2>
+    <div class="muted">${esc(t.question)}</div>
+    <div class="choice">
+      <button class="big" data-r="boring">😐 Скучная тема</button>
+      <button class="big" data-r="not_now">🕓 Не сегодня</button>
     </div>
-    <div class="muted center">Обсудите, если хочется.</div>
-    ${FB_HTML}
+    <div class="hint">«Скучная» — похожие темы будут выпадать реже. «Не сегодня» — тема вернётся в другой раз.</div>
     <div class="spacer"></div>
-    <button class="primary big" id="next">Дальше →</button>`);
-  bind?.(document.getElementById("res"));
-  bindFeedback(card);
-  document.getElementById("next").onclick = () => {
-    log("card_done", { cardId: card.id });
-    markPlayed(card.id); S.idx++; screenCard();
-  };
-}
-
-/* ---------- Шифрование для админа: AES-GCM + RSA-OAEP, закрытый ключ только на ПК ---------- */
-const b64e = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
-const b64d = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
-async function seal(obj) {
-  const pub = await crypto.subtle.importKey("spki", b64d(ADMIN_PUBKEY), { name: "RSA-OAEP", hash: "SHA-256" }, false, ["encrypt"]);
-  const aes = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aes, new TextEncoder().encode(JSON.stringify(obj)));
-  const k = await crypto.subtle.encrypt({ name: "RSA-OAEP" }, pub, await crypto.subtle.exportKey("raw", aes));
-  return { k: b64e(k), iv: b64e(iv), ct: b64e(ct) };
-}
-
-/* ---------- Пас ---------- */
-function screenPass(card) {
-  render(`
-    <h2>Кто пасует?</h2>
-    <div class="muted">Карточка уйдёт без объяснений.</div>
-    <div class="names">${S.players.map((p, i) =>
-      `<button data-i="${i}" ${S.passes[i] ? "" : "disabled"}>${esc(p)} · ${S.passes[i]}</button>`).join("")}</div>
-    <button id="back">Назад к карточке</button>`);
-  $app.querySelectorAll("[data-i]").forEach(b => b.onclick = () => {
-    const i = +b.dataset.i;
-    S.passes[i]--;
-    log("pass", { cardId: card.id, player: S.players[i] });
-    markPlayed(card.id); S.idx++; screenCard();
+  `);
+  $app.querySelectorAll("[data-r]").forEach(b => b.onclick = () => {
+    rec.result = "skip"; rec.reason = b.dataset.r;
+    if (b.dataset.r === "boring") {
+      const h = hist();
+      t.tags.forEach(g => h.boring[g] = (h.boring[g] || 0) + 1);
+      h.played.push(t.id);
+      saveHist(h);
+    }
+    store.set("currentEvening", S);
+    screenTopic();
   });
-  document.getElementById("back").onclick = () => screenCard(false);  // не дублируем card_shown
 }
 
-/* ---------- Статистика между вечерами ---------- */
-function markPlayed(id) {
-  const st = store.get("stats", { played: [], tags: {} });
-  if (!st.played.includes(id)) st.played.push(id);
-  store.set("stats", st);
-}
-function saveTagStats(card, value) {
-  const st = store.get("stats", { played: [], tags: {} });
-  st.cardFb = st.cardFb || {};
-  st.cardFb[card.id] = value;   // последняя оценка карточки; веса тегов считаются на ПК из логов
-  store.set("stats", st);
-}
-
-/* ---------- Финал и экспорт ---------- */
-function screenEnd() {
-  log("session_end");
-  S.endedAt = new Date().toISOString();
-  store.set("currentSession", S);
-  const mins = Math.round((Date.now() - S.startMs) / 60000);
+function screenRate(t, rec) {
   render(`
-    <h1>Вечер сыгран</h1>
-    <div class="muted">Длительность: ${mins} мин. Карточек: ${S.queue.length}.</div>
-    <div class="muted">Сохраните результаты и перенесите на ПК в папку <b>sessions/</b>. Анонимные ответы в файле зашифрованы.</div>
     <div class="spacer"></div>
-    <button class="primary big" id="exp">Сохранить результаты</button>
-    <button class="big" id="again">В начало</button>`);
-  document.getElementById("exp").onclick = exportLog;
-  document.getElementById("again").onclick = screenSetup;
+    <h2>Как зашла тема?</h2>
+    <div class="muted">${esc(t.question)}</div>
+    <div class="fb">
+      <button data-r="fire">🔥<br>Огонь</button>
+      <button data-r="ok">👍<br>Норм</button>
+      <button data-r="meh">😐<br>Так себе</button>
+    </div>
+    <div class="spacer"></div>
+  `);
+  $app.querySelectorAll("[data-r]").forEach(b => b.onclick = () => {
+    rec.result = "done"; rec.rating = b.dataset.r;
+    const h = hist();
+    h.played.push(t.id);
+    if (b.dataset.r === "meh") t.tags.forEach(g => h.boring[g] = (h.boring[g] || 0) + 1);
+    saveHist(h);
+    store.set("currentEvening", S);
+    screenNext();
+  });
 }
 
-async function exportLog() {
-  const out = { ...S }; delete out.startMs; delete out.queue;
-  out.cardIds = S.queue.map(c => c.id);
-  const name = `session_${S.id}.json`;
-  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+function screenNext() {
+  const done = S.topics.filter(x => x.result === "done").length;
+  render(`
+    <div class="spacer"></div>
+    <h2>Обсудили тем: ${done}</h2>
+    <div class="muted">Ещё одну или хватит на сегодня?</div>
+    <div class="spacer"></div>
+    <button class="primary big" id="more">Ещё тема</button>
+    <button class="big" id="end">Хватит на сегодня</button>
+  `);
+  document.getElementById("more").onclick = screenTopic;
+  document.getElementById("end").onclick = () => screenEnd();
+}
+
+function screenEnd(note = "") {
+  S.endedAt = new Date().toISOString();
+  store.set("currentEvening", S);
+  const done = S.topics.filter(x => x.result === "done");
+  const mins = Math.round(done.reduce((a, x) => a + (x.seconds || 0), 0) / 60);
+  render(`
+    <div class="spacer"></div>
+    <h1>Вечер сыгран</h1>
+    ${note ? `<div class="muted">${note}</div>` : ""}
+    <div class="muted">Тем обсудили: ${done.length}, примерно ${mins} мин.</div>
+    ${done.map(x => `<div class="prompt">${esc(x.question)}</div>`).join("")}
+    <div class="spacer"></div>
+    <button class="big" id="exp">Сохранить итоги (для ПК)</button>
+    <button class="primary big" id="home">Готово</button>
+  `);
+  document.getElementById("exp").onclick = exportEvening;
+  document.getElementById("home").onclick = screenHome;
+}
+
+async function exportEvening() {
+  const name = `evening_${S.startedAt.slice(0, 16).replace("T", "_").replace(":", "-")}.json`;
+  const blob = new Blob([JSON.stringify({ ...S, history: hist() }, null, 2)], { type: "application/json" });
   const file = new File([blob], name, { type: "application/json" });
   try {
     if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; }
@@ -668,7 +444,7 @@ async function exportLog() {
 }
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js");
-screenSetup();
+screenHome();
 </script>
 </body>
 </html>
